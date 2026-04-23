@@ -29,14 +29,22 @@ jobs:
 
       - name: Generate Go Code
         run: |
+          # Создаем папку для результата
           mkdir -p pb
-          # Теперь protoc увидит плагины, так как мы обновили GITHUB_PATH
-          protoc --proto_path=proto_files --go_out=. --go-grpc_out=. proto_files/order_payment.proto
+          # Генерируем код. 
+          # Мы используем --go_opt=module=... чтобы файлы ложились сразу в папку pb, 
+          # а не создавали длинный путь github.com/NurTem06/...
+          protoc --proto_path=proto_files \
+            --go_out=. --go_opt=module=github.com/NurTem06/ap-final-generated \
+            --go-grpc_out=. --go-grpc_opt=module=github.com/NurTem06/ap-final-generated \
+            proto_files/order_payment.proto
 
       - name: Commit and Push Changes
         run: |
           git config --global user.email "nurislam@example.com"
           git config --global user.name "NurTem06"
-          git add pb/*
+          # Добавляем именно папку pb
+          git add pb/
           git commit -m "Auto-generated gRPC code from proto" || echo "No changes to commit"
-          git push origin main
+          # ВАЖНО: пушим в master, так как это твоя основная ветка
+          git push origin master
