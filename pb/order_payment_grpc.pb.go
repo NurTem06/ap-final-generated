@@ -19,16 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PaymentService_ProcessPayment_FullMethodName = "/pb.PaymentService/ProcessPayment"
+	PaymentService_ProcessPayment_FullMethodName = "/payment.PaymentService/ProcessPayment"
+	PaymentService_ListPayments_FullMethodName   = "/payment.PaymentService/ListPayments"
 )
 
 // PaymentServiceClient is the client API for PaymentService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// Сервис платежей (для Assignment 2)
 type PaymentServiceClient interface {
 	ProcessPayment(ctx context.Context, in *PaymentRequest, opts ...grpc.CallOption) (*PaymentResponse, error)
+	// НОВЫЙ МЕТОД
+	ListPayments(ctx context.Context, in *ListPaymentsRequest, opts ...grpc.CallOption) (*ListPaymentsResponse, error)
 }
 
 type paymentServiceClient struct {
@@ -49,13 +50,23 @@ func (c *paymentServiceClient) ProcessPayment(ctx context.Context, in *PaymentRe
 	return out, nil
 }
 
+func (c *paymentServiceClient) ListPayments(ctx context.Context, in *ListPaymentsRequest, opts ...grpc.CallOption) (*ListPaymentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPaymentsResponse)
+	err := c.cc.Invoke(ctx, PaymentService_ListPayments_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PaymentServiceServer is the server API for PaymentService service.
 // All implementations must embed UnimplementedPaymentServiceServer
 // for forward compatibility.
-//
-// Сервис платежей (для Assignment 2)
 type PaymentServiceServer interface {
 	ProcessPayment(context.Context, *PaymentRequest) (*PaymentResponse, error)
+	// НОВЫЙ МЕТОД
+	ListPayments(context.Context, *ListPaymentsRequest) (*ListPaymentsResponse, error)
 	mustEmbedUnimplementedPaymentServiceServer()
 }
 
@@ -68,6 +79,9 @@ type UnimplementedPaymentServiceServer struct{}
 
 func (UnimplementedPaymentServiceServer) ProcessPayment(context.Context, *PaymentRequest) (*PaymentResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ProcessPayment not implemented")
+}
+func (UnimplementedPaymentServiceServer) ListPayments(context.Context, *ListPaymentsRequest) (*ListPaymentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPayments not implemented")
 }
 func (UnimplementedPaymentServiceServer) mustEmbedUnimplementedPaymentServiceServer() {}
 func (UnimplementedPaymentServiceServer) testEmbeddedByValue()                        {}
@@ -108,127 +122,40 @@ func _PaymentService_ProcessPayment_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PaymentService_ListPayments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPaymentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PaymentServiceServer).ListPayments(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PaymentService_ListPayments_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PaymentServiceServer).ListPayments(ctx, req.(*ListPaymentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PaymentService_ServiceDesc is the grpc.ServiceDesc for PaymentService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var PaymentService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pb.PaymentService",
+	ServiceName: "payment.PaymentService",
 	HandlerType: (*PaymentServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "ProcessPayment",
 			Handler:    _PaymentService_ProcessPayment_Handler,
 		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "order_payment.proto",
-}
-
-const (
-	OrderUpdateService_SubscribeToOrderUpdates_FullMethodName = "/pb.OrderUpdateService/SubscribeToOrderUpdates"
-)
-
-// OrderUpdateServiceClient is the client API for OrderUpdateService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// Сервис стриминга заказов (Core Task)
-type OrderUpdateServiceClient interface {
-	SubscribeToOrderUpdates(ctx context.Context, in *OrderRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OrderStatusUpdate], error)
-}
-
-type orderUpdateServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewOrderUpdateServiceClient(cc grpc.ClientConnInterface) OrderUpdateServiceClient {
-	return &orderUpdateServiceClient{cc}
-}
-
-func (c *orderUpdateServiceClient) SubscribeToOrderUpdates(ctx context.Context, in *OrderRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OrderStatusUpdate], error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &OrderUpdateService_ServiceDesc.Streams[0], OrderUpdateService_SubscribeToOrderUpdates_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &grpc.GenericClientStream[OrderRequest, OrderStatusUpdate]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type OrderUpdateService_SubscribeToOrderUpdatesClient = grpc.ServerStreamingClient[OrderStatusUpdate]
-
-// OrderUpdateServiceServer is the server API for OrderUpdateService service.
-// All implementations must embed UnimplementedOrderUpdateServiceServer
-// for forward compatibility.
-//
-// Сервис стриминга заказов (Core Task)
-type OrderUpdateServiceServer interface {
-	SubscribeToOrderUpdates(*OrderRequest, grpc.ServerStreamingServer[OrderStatusUpdate]) error
-	mustEmbedUnimplementedOrderUpdateServiceServer()
-}
-
-// UnimplementedOrderUpdateServiceServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedOrderUpdateServiceServer struct{}
-
-func (UnimplementedOrderUpdateServiceServer) SubscribeToOrderUpdates(*OrderRequest, grpc.ServerStreamingServer[OrderStatusUpdate]) error {
-	return status.Error(codes.Unimplemented, "method SubscribeToOrderUpdates not implemented")
-}
-func (UnimplementedOrderUpdateServiceServer) mustEmbedUnimplementedOrderUpdateServiceServer() {}
-func (UnimplementedOrderUpdateServiceServer) testEmbeddedByValue()                            {}
-
-// UnsafeOrderUpdateServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to OrderUpdateServiceServer will
-// result in compilation errors.
-type UnsafeOrderUpdateServiceServer interface {
-	mustEmbedUnimplementedOrderUpdateServiceServer()
-}
-
-func RegisterOrderUpdateServiceServer(s grpc.ServiceRegistrar, srv OrderUpdateServiceServer) {
-	// If the following call panics, it indicates UnimplementedOrderUpdateServiceServer was
-	// embedded by pointer and is nil.  This will cause panics if an
-	// unimplemented method is ever invoked, so we test this at initialization
-	// time to prevent it from happening at runtime later due to I/O.
-	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
-		t.testEmbeddedByValue()
-	}
-	s.RegisterService(&OrderUpdateService_ServiceDesc, srv)
-}
-
-func _OrderUpdateService_SubscribeToOrderUpdates_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(OrderRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(OrderUpdateServiceServer).SubscribeToOrderUpdates(m, &grpc.GenericServerStream[OrderRequest, OrderStatusUpdate]{ServerStream: stream})
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type OrderUpdateService_SubscribeToOrderUpdatesServer = grpc.ServerStreamingServer[OrderStatusUpdate]
-
-// OrderUpdateService_ServiceDesc is the grpc.ServiceDesc for OrderUpdateService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var OrderUpdateService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pb.OrderUpdateService",
-	HandlerType: (*OrderUpdateServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "SubscribeToOrderUpdates",
-			Handler:       _OrderUpdateService_SubscribeToOrderUpdates_Handler,
-			ServerStreams: true,
+			MethodName: "ListPayments",
+			Handler:    _PaymentService_ListPayments_Handler,
 		},
 	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "order_payment.proto",
 }
