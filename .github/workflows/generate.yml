@@ -3,7 +3,7 @@ name: Generate Go Code from Proto
 on:
   push:
     branches:
-      - main  # или master, проверь как называется главная ветка в твоем репо
+      - master  # или master, проверь как называется главная ветка в твоем репо
 
 jobs:
   generate:
