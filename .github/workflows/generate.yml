@@ -1,0 +1,39 @@
+name: Generate Go Code from Proto
+
+on:
+  push:
+    branches:
+      - main  # или master, проверь как называется главная ветка в твоем репо
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Generated Repo
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Install Protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+      - name: Clone Proto Files Repository
+        run: |
+          git clone https://github.com/NurTem06/ap-protos.git proto_files
+
+      - name: Generate Go Code
+        run: |
+          mkdir -p pb
+          protoc --proto_path=proto_files --go_out=. --go-grpc_out=. proto_files/order_payment.proto
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.email "nurislam@example.com"
+          git config --global user.name "NurTem06"
+          git add pb/*
+          git commit -m "Auto-generated gRPC code from proto" || echo "No changes to commit"
+          git push origin main
